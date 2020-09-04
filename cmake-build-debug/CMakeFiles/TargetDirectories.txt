@@ -1,0 +1,3 @@
+/home/geray/桌面/judger/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/home/geray/桌面/judger/cmake-build-debug/CMakeFiles/edit_cache.dir
+/home/geray/桌面/judger/cmake-build-debug/CMakeFiles/parse.dir

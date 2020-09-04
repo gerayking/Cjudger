@@ -1,0 +1,44 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/geray/桌面/judger/exit_code.h
+
+/home/geray/桌面/judger/filecompare.h
+stdio.h
+-
+stdlib.h
+-
+error.h
+-
+fcntl.h
+-
+string.h
+-
+exit_code.h
+/home/geray/桌面/judger/exit_code.h
+
+/home/geray/桌面/judger/main.cpp
+iostream
+-
+parse.h
+/home/geray/桌面/judger/parse.h
+filecompare.h
+/home/geray/桌面/judger/filecompare.h
+result.h
+/home/geray/桌面/judger/result.h
+exit_code.h
+/home/geray/桌面/judger/exit_code.h
+
+/home/geray/桌面/judger/parse.h
+result.h
+/home/geray/桌面/judger/result.h
+
+/home/geray/桌面/judger/result.h
+string
+-
+

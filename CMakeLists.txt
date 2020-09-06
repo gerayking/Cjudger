@@ -9,4 +9,6 @@ add_executable(parse
         main.cpp
         filecompare.h
         parse.cpp
-        parse.h result.h)
+        parse.h
+        result.h
+        utils.h)

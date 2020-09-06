@@ -5,19 +5,25 @@
 #ifndef JUDGER_RESULT_H
 #define JUDGER_RESULT_H
 #include<string>
+struct run_in{
+    std::string stdin_file;
+    std::string stdout_file;
+    std::string stderr_file;
+    std::string stdexec_file;
+};
 struct ini_result{
     std::string temDir;
+    std::string outFileTem;
     std::string inFileTem;
-    std::string inFileAbs;
-    std::string outFileAbs;
-    std::string ansFileTem;
+    std::string stdOut;
     std::string errFileTem;
     std::string inFile;
+    std::string workspace;
 };
 struct run_result{
     int exitCode;
-    std::string outFileTem;
-    std::string ansFileAbs;
+    std::string stdAns;
+    std::string stdOut;
     std::string errInfo;
     long time;
     int mem;

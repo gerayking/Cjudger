@@ -23,7 +23,7 @@
 #include "initservice.h"
 #include "exit_code.h"
 #include "parse.h"
-static const char *optString = "t:m:i:o:a:l:h";
+static const char *optString = "t:m:i:o:a:l:p:h";
 static const struct option longOpts[] = {
 	{"time", required_argument, NULL, 't'},
 	{"memory", required_argument, NULL, 'm'},
@@ -31,6 +31,7 @@ static const struct option longOpts[] = {
 	{"output", required_argument, NULL, 'o'},
     {"anspath",required_argument,NULL,'a'},
     {"language",required_argument,NULL, 'l'},
+    {"pid",required_argument,NULL,'p'},
 	{"help", no_argument, NULL, 'h'},
 	{ NULL, no_argument, NULL, 0 }
 };
@@ -62,10 +63,8 @@ ini_result init_env(){
 		error(EX_ERROR,0,"PROGRAM not exist.");
 	}
 //    std::cout<<"exec "+buffer<<"\n";
-	std::string inFileTem = tmpDirName + "/" + inFileName + "/in";
-	std::string inFileAbs = workspace+"/in/"+inFileName+".in";
-	std::string outFileAbs = workspace+"/out/"+inFileName+".out";
-	std::string ansFileTem = tmpDirName+"/"+inFileName+".out";
+	std::string inFileTem = tmpDirName + "/" + inFileName + ".in";
+	std::string outFileTem = tmpDirName+"/"+inFileName+".out";
 	std::string errFilename = tmpDirName+"/"+inFileName+".err";
 	struct passwd *nobody = getpwnam("root");
     uid_t  parent_uid = getuid();
@@ -78,8 +77,8 @@ ini_result init_env(){
 	chown(tmpPath.c_str(),child_uid,child_gid);
 	chmod(tmpPath.c_str(),00555);
 	// infile Auth
-	if(ansFileTem.c_str() != NULL){
-		int tmpof = open(ansFileTem.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 00777);
+	if(outFileTem.c_str() != NULL){
+		int tmpof = open(outFileTem.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 00777);
 		close(tmpof);
 	}
 	if(errFilename.c_str() !=NULL){
@@ -88,20 +87,18 @@ ini_result init_env(){
 	}
 	ini_result res;
 	res.temDir = tmpDirName;
+	res.inFile = inFileName;
 	res.errFileTem=errFilename;
-	res.ansFileTem=ansFileTem;
-	res.inFile=inFileName;
-	res.inFileAbs=inFileAbs;
 	res.inFileTem=inFileTem;
-	res.outFileAbs=outFileAbs;
+	res.workspace=workspace;
+	res.outFileTem = outFileTem;
 	return res;
 }
 run_result  return_result(std::string info,int status,
-                          ini_result &iniResult, com_result &comResult,
+                          std::string out_ans,
                           long time,int mem){
     run_result res;
-    res.ansFileAbs = iniResult.ansFileTem;
-    res.outFileTem = iniResult.outFileAbs;
+    res.stdOut = out_ans;
     res.errInfo = info;
     res.exitCode = status;
     res.time = time;
@@ -136,6 +133,7 @@ com_result compile(ini_result &iniResult){
 	    }
 	}
 	res.execFileTem = execFileName;
+	res.isCompiled=1;
 	return res;
 }
 /*int get_memory_by_pid(pid_t p)
@@ -157,7 +155,16 @@ com_result compile(ini_result &iniResult){
     fclose(fd);
     return 1;
 }*/
-run_result run(ini_result &iniRes,com_result &comRes){
+/*
+ * struct run_in{
+    std::string stdin_file: input file
+    std::string stdout_file: output file
+    std::string sederr_file: err file
+    std::string stdexec_file: exec file
+};
+ *
+ * */
+run_result run(run_in &runIn, std::string std_ans){
 	int status;
     time_t time_usage = 0;
     int mem_usage = 0;
@@ -168,9 +175,9 @@ run_result run(ini_result &iniRes,com_result &comRes){
 	// child process
 	if(child_pid == 0){
 	    int fd_in,fd_out,fd_err;
-	    fd_in = open(iniRes.inFileAbs.c_str(),O_RDONLY);
-	    fd_out = open(iniRes.ansFileTem.c_str(),O_WRONLY);
-	    fd_err = open(iniRes.errFileTem.c_str(),O_WRONLY);
+	    fd_in = open(runIn.stdin_file.c_str(), O_RDONLY);
+	    fd_out = open(runIn.stdout_file.c_str(), O_WRONLY);
+	    fd_err = open(runIn.stderr_file.c_str(), O_WRONLY);
 //        printf("run child process");
 //        printf("%d %d %d\n",fd_in,fd_out,fd_err);
         if(fd_in==-1 || fd_out == -1 || fd_err == -1){
@@ -184,7 +191,7 @@ run_result run(ini_result &iniRes,com_result &comRes){
 	        error(EX_ERROR,0,"ptrace error");
 	    }
         printf("run child process");
-        if(execv(comRes.execFileTem.c_str(),NULL) == -1){
+        if(execv(runIn.stdexec_file.c_str(), NULL) == -1){
 	        error(EX_ERROR,0,"execv error");
 	    }
 	}else{
@@ -197,40 +204,40 @@ run_result run(ini_result &iniRes,com_result &comRes){
 	        time_usage = tv2ms(usage.ru_stime)+tv2ms(usage.ru_utime);
 	        if(time_usage>timeLimit){
 	            kill(child_pid,SIGKILL);
-	            return return_result("TLE",EX_TLE,iniRes,comRes,time_usage,mem_usage);
+	            return return_result("TLE", EX_TLE, runIn.stdout_file, time_usage, mem_usage);
 	        }
 	        if(mem_usage>memoryLimit){
 	            kill(child_pid,SIGKILL);
-	            return return_result("MLE_NORMAL",EX_MLE,iniRes,comRes,time_usage,mem_usage);
+	            return return_result("MLE_NORMAL", EX_MLE, runIn.stdout_file, time_usage, mem_usage);
 	        }
 	        // 正常退出
             if(WIFEXITED(status)){
-                return return_result("Compile and Run end",EX_SUCCESS,iniRes,comRes,time_usage,mem_usage);
+                return return_result("Compile and Run end", EX_SUCCESS, runIn.stdout_file, time_usage, mem_usage);
             }else if(WIFSIGNALED(status)){// 信号中断
                 if(WTERMSIG(status)==SIGSEGV){
                     if(mem_usage > memoryLimit){
-                        return return_result("MLE_SIG",EX_MLE,iniRes,comRes,time_usage,mem_usage);
+                        return return_result("MLE_SIG", EX_MLE, runIn.stdout_file, time_usage, mem_usage);
                     }
                 }
                 else if(WTERMSIG(status) == SIGXCPU){
                     if(time_usage > timeLimit){
-                        return return_result("TLE_SIG",EX_TLE,iniRes,comRes,time_usage,mem_usage);
+                        return return_result("TLE_SIG", EX_TLE, runIn.stdout_file, time_usage, mem_usage);
                     }
                 }
                 else if(WTERMSIG(status) == SIGKILL || WTERMSIG(status) == SIGABRT){
                     if(mem_usage > memoryLimit){
-                        return return_result("MLE_SIG",EX_MLE,iniRes,comRes,time_usage,mem_usage);
+                        return return_result("MLE_SIG", EX_MLE, runIn.stdout_file, time_usage, mem_usage);
                     }
                     else if(time_usage > timeLimit){
-                        return return_result("TLE_SIG",EX_TLE,iniRes,comRes,time_usage,mem_usage);
+                        return return_result("TLE_SIG", EX_TLE, runIn.stdout_file, time_usage, mem_usage);
                     }else
-                        return return_result("Runtime Error",EX_RE,iniRes,comRes,time_usage,mem_usage);
-                }else return return_result("Runtime Error",EX_RE,iniRes,comRes,time_usage,mem_usage);
+                        return return_result("Runtime Error", EX_RE, runIn.stdout_file, time_usage, mem_usage);
+                }else return return_result("Runtime Error", EX_RE, runIn.stdout_file, time_usage, mem_usage);
             }
             ptrace(PTRACE_SYSCALL,child_pid,NULL,NULL);
 	    }
 	}
-	return return_result("Run Error",EX_SUCCESS,iniRes,comRes,time_usage,mem_usage);
+	return return_result("Run Error", EX_SUCCESS, runIn.stdout_file, time_usage, mem_usage);
 }
 void print_usage() {
 	printf("Usage: %s [OPTION] PROGRAM \n", program_invocation_name);
@@ -266,11 +273,10 @@ void parse_opt(int argc, char *  argv[]) {
 				  "MEMORY_LIMIT must be a positive integer.");
 				break;
 			
-			case 'i':
+			case 'p':
 				if (optarg == 0) error(EX_ERROR, 0, "INPUT_FILE missing.");
 				inFileName = optarg;
 				break;
-			
 			case 'h':
 				print_usage();
 				break;

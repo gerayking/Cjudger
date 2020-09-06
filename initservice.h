@@ -36,7 +36,6 @@ std::string init_workspace(){
     }
 	char config_file_path[110] = {'\0'};
     sprintf(config_file_path, "%s/%s", resworkspace, "config.txt");
-    printf("%s \n",config_file_path);
     config_fd = fopen(config_file_path ,"r");
     if(config_fd == NULL){
     	printf("Configuration config.txt open faild");

@@ -16,15 +16,23 @@ make
 .
 ├── config.txt
 ├── dev
-│   ├── in
-│   │   └── 1.in
-│   └── out
-│       └── 1.out
+│   └── 1
+│       ├── in
+│       │   ├── 1.in
+│       │   └── 2.in
+│       └── out
+│           ├── 1.out
+│           └── 2.out
 ├── parse
 └── test1.cpp
+
 
 ```
 Run
 ```
- ./parse -t 3000 -m 512000  -i 1 -l 2 test1.cpp  
+ ./parse -t 3000 -m 512000  -p 1 -l 2 test1.cpp
+```
+### config.txt
+```
+TEMPPATH = /dev
 ```

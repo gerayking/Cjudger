@@ -48,14 +48,12 @@ int get_file_count(const char *root)
         if(ptr->d_type == DT_DIR)
         {
             sprintf(path,"%s%s/",root,ptr->d_name);
-            //printf("%s/n",path);
             total += get_file_count(path);
         }
 
         if(ptr->d_type == DT_REG)
         {
             total++;
-            printf("%s%s/n",root,ptr->d_name);
         }
     }
     if(errno != 0)
@@ -67,6 +65,7 @@ int get_file_count(const char *root)
     return total;
 }
 int run_all(ini_result iniResult,com_result comResult){
+
     std::string workspace = iniResult.workspace;
     std::string indir = workspace+ "/" +iniResult.inFile + "/in";
     std::string outdir = workspace+ "/"+iniResult.inFile + "/out";

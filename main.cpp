@@ -8,6 +8,7 @@
 #include "exit_code.h"
 #include "utils.h"
 // clear tmp/out
+int timeuse = 0,memoryuse = 0,exitCode;
 int clearFile(const char *path){
     /* 打开一个文件 */
     int ret = open(path, O_WRONLY | O_TRUNC);
@@ -64,11 +65,26 @@ int get_file_count(const char *root)
     closedir(dir);
     return total;
 }
-int run_all(ini_result iniResult,com_result comResult){
-
-    std::string workspace = iniResult.workspace;
-    std::string indir = workspace+ "/" +iniResult.inFile + "/in";
-    std::string outdir = workspace+ "/"+iniResult.inFile + "/out";
+int run_all(ini_result iniResult){
+    // workspace :
+    /*workspace
+    ├──
+    ├── problem
+    │   └── 1
+    │       ├── in
+    │       │   ├── 1.in
+    │       │   └── 2.in
+    │       └── out
+    │           ├── 1.out
+    │           └── 2.out
+    ├── parse
+    └── test1.cpp
+     *
+     * */
+    std::string workspace = "/home/geray/data";
+    std::string indir = workspace + "/problem/" + iniResult.pid + "/in";
+    std::string outdir = workspace + "/problem/" + iniResult.pid + "/out";
+    std::string execdir = "/home/geray/code/"+iniResult.exec;
     run_in runIn;
     int count = get_file_count(indir.c_str());
     for(int i=1;i<=count;i++){
@@ -77,13 +93,15 @@ int run_all(ini_result iniResult,com_result comResult){
         runIn.stderr_file=iniResult.errFileTem;
         runIn.stdout_file=iniResult.outFileTem;
         runIn.stdin_file= in;
-        runIn.stdexec_file=comResult.execFileTem;
-        run_result runResult = run(runIn,out);
+        runIn.stdexec_file=execdir;
+        run_result runResult = run(runIn);
         int isAc;
         if(runResult.exitCode!=EX_SUCCESS){
             clear_env(iniResult.temDir);
             return runResult.exitCode;
         }else{
+            if(runResult.mem>memoryuse)memoryuse=runResult.mem;
+            if(runResult.time>timeuse)timeuse=runResult.time;
             isAc = file_compare(runIn.stdout_file.c_str(),out.c_str());
             clearFile(runIn.stdout_file.c_str());//清空out文件方便输出
             if(!isAc){
@@ -98,14 +116,17 @@ int run_all(ini_result iniResult,com_result comResult){
 int main(int argc, char * argv[]) {
 //    test();
     cmp_result cmpResult;
+    // 解析参数，./parse -m -t -p : programid
     parse_opt(argc,argv);
     ini_result iniResult = init_env();
-    com_result comResult = compile(iniResult);
-    if(comResult.isCompiled==0){
-        printf("CE\n");
-        return 0;
-    }
-    int ex_code =  run_all(iniResult,comResult);
-    printf("%d\n",ex_code);
+///    com_result comResult = compile(iniResult);
+//    if(comResult.isCompiled==0){
+//        printf("CE\n");
+//        return 0;
+//    }
+    int ex_code =  run_all(iniResult);
+    printf("ex_code : %d\n"
+           "timeuse: %d\n"
+           "memoryuse: %d\n",ex_code,timeuse,memoryuse);
     return ex_code;
 }

@@ -28,23 +28,3 @@ char* getdir(){
 
     }
 }
-std::string init_workspace(){
-    resworkspace = (char*) malloc (100 * sizeof(char));
-    if(getcwd(resworkspace, 100) == NULL){
-        printf("Init workspace failed\n");
-        exit(1);
-    }
-	char config_file_path[110] = {'\0'};
-    sprintf(config_file_path, "%s/%s", resworkspace, "config.txt");
-    config_fd = fopen(config_file_path ,"r");
-    if(config_fd == NULL){
-    	printf("Configuration config.txt open faild");
-    	exit(1);
-	}
-	char* workdir = getdir();
-    char* buffer = (char *)malloc(100);
-    sprintf(buffer,"%s%s",resworkspace,workdir);
-    free(resworkspace);
-    std::string res  = buffer;
-    return res;
-}

@@ -5,6 +5,10 @@
 #ifndef JUDGER_RESULT_H
 #define JUDGER_RESULT_H
 #include<string>
+struct optArgs{
+    std::string execName;
+    std::string pid;
+};
 struct run_in{
     std::string stdin_file;
     std::string stdout_file;
@@ -14,11 +18,9 @@ struct run_in{
 struct ini_result{
     std::string temDir;
     std::string outFileTem;
-    std::string inFileTem;
-    std::string stdOut;
     std::string errFileTem;
-    std::string inFile;
-    std::string workspace;
+    std::string pid;
+    std::string exec;
 };
 struct run_result{
     int exitCode;

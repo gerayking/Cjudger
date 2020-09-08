@@ -23,14 +23,10 @@
 #include "initservice.h"
 #include "exit_code.h"
 #include "parse.h"
-static const char *optString = "t:m:i:o:a:l:p:h";
+static const char *optString = "t:m:p:h";
 static const struct option longOpts[] = {
 	{"time", required_argument, NULL, 't'},
 	{"memory", required_argument, NULL, 'm'},
-	{"input", required_argument, NULL, 'i'},
-	{"output", required_argument, NULL, 'o'},
-    {"anspath",required_argument,NULL,'a'},
-    {"language",required_argument,NULL, 'l'},
     {"pid",required_argument,NULL,'p'},
 	{"help", no_argument, NULL, 'h'},
 	{ NULL, no_argument, NULL, 0 }
@@ -38,8 +34,8 @@ static const struct option longOpts[] = {
 
 pid_t child_pid;
 int timeLimit = 1000,memoryLimit=32768,file_type = 0;
-std::string targetFileName;
-std::string inFileName;
+std::string execDir;
+std::string pid;
 char tmpDirTemplate[]= "/tmp/LJKZ.XXXXXX";
 void clear_env(std::string temDir){
     std::string buffer;
@@ -48,34 +44,24 @@ void clear_env(std::string temDir){
             error(EX_ERROR,0,"DEL TEMP Failed");
     }
 }
+// out 和 err放在临时目录中
 ini_result init_env(){
     // 创建临时文件夹
 //	printf("tmpDirTemplate : %s\n",tmpDirTemplate);
 	umask(0);
 	std::string tmpDirName = mkdtemp(tmpDirTemplate);
-    std::string workspace = init_workspace();
 //    printf("%s\n",tmpDirName.c_str());// 转移目标文件到临时区
-    std::string buffer;
-	buffer = "cp "+targetFileName+" "+tmpDirName+"/";
-//	printf("exec %s\n",buffer.c_str());
-    if(system(buffer.c_str()) != 0){
-        clear_env(tmpDirName);
-		error(EX_ERROR,0,"PROGRAM not exist.");
-	}
 //    std::cout<<"exec "+buffer<<"\n";
-	std::string inFileTem = tmpDirName + "/" + inFileName + ".in";
-	std::string outFileTem = tmpDirName+"/"+inFileName+".out";
-	std::string errFilename = tmpDirName+"/"+inFileName+".err";
+	std::string outFileTem = tmpDirName + "/" + pid + ".out";
+	std::string errFilename = tmpDirName + "/" + pid + ".err";
 	struct passwd *nobody = getpwnam("root");
-    uid_t  parent_uid = getuid();
-	uid_t  parent_gid = getegid();
-	uid_t child_uid = nobody->pw_uid;
-	uid_t child_gid = nobody->pw_gid;
+//	// 给予当前进程权限，直接给root
+//    uid_t  parent_uid = getuid();
+//	uid_t  parent_gid = getegid();
+//	uid_t child_uid = nobody->pw_uid;
+//	uid_t child_gid = nobody->pw_gid;
+//	chown(tmpDirName.c_str(),child_uid,child_gid);
 	chmod(tmpDirName.c_str(),00711);
-	// 编译文件路径
-	std::string tmpPath = tmpDirName + "/" + targetFileName;
-	chown(tmpPath.c_str(),child_uid,child_gid);
-	chmod(tmpPath.c_str(),00555);
 	// infile Auth
 	if(outFileTem.c_str() != NULL){
 		int tmpof = open(outFileTem.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 00777);
@@ -86,12 +72,11 @@ ini_result init_env(){
 	    close(tmpof);
 	}
 	ini_result res;
-	res.temDir = tmpDirName;
-	res.inFile = inFileName;
-	res.errFileTem=errFilename;
-	res.inFileTem=inFileTem;
-	res.workspace=workspace;
-	res.outFileTem = outFileTem;
+	res.temDir = tmpDirName;// 临时目录
+	res.pid = pid;// pid
+	res.errFileTem=errFilename;// UUID.err
+	res.outFileTem = outFileTem;// UUID.out
+	res.exec = execDir;
 	return res;
 }
 run_result  return_result(std::string info,int status,
@@ -106,36 +91,36 @@ run_result  return_result(std::string info,int status,
     return res;
 }
 // 还没有处理编译错误的信息
-com_result compile(ini_result &iniResult){
-	std::string buffer;
-	std::string infilePath = iniResult.temDir+"/"+targetFileName;
-	std::string execFileName = iniResult.temDir+"/"+inFileName+"_exec";
-    com_result res;
-    if(file_type == 0){
-	    error(EX_ERROR,0,"no language type");
-	}
-	else if(file_type==1){//C Language
-	    buffer = "gcc -O2 -w -static -fmax-errors=3 -std=c11 "+infilePath+" -lm -o "+execFileName + ">"+iniResult.errFileTem;
-	    system(buffer.c_str());
-	    //  compile faild
-        if(access(execFileName.c_str(),0) != 0){
-            res.isCompiled=0;
-            return res;
-	        error(EX_ERROR,0,"Compile faild");
-	    }
-	}else if(file_type == 2){
-        buffer = "g++ -O2 -w -static -fmax-errors=3 -std=c11 "+infilePath+" -lm -o "+execFileName + ">"+iniResult.errFileTem;
-	    system(buffer.c_str());
-        if(access(execFileName.c_str(),0) != 0){
-            res.isCompiled=0;
-            return res;
+//com_result compile(ini_result &iniResult){
+//	std::string buffer;
+//	std::string infilePath = iniResult.temDir+"/"+exec;
+//	std::string execFileName = iniResult.temDir+"/"+pid+"_exec";
+//    com_result res;
+//    if(file_type == 0){
+//	    error(EX_ERROR,0,"no language type");
+//	}
+//	else if(file_type==1){//C Language
+//	    buffer = "gcc -O2 -w -static -fmax-errors=3 -std=c11 "+infilePath+" -lm -o "+execFileName + ">"+iniResult.errFileTem;
+//	    system(buffer.c_str());
+//	    //  compile faild
+//        if(access(execFileName.c_str(),0) != 0){
+//            res.isCompiled=0;
+//            return res;
 //	        error(EX_ERROR,0,"Compile faild");
-	    }
-	}
-	res.execFileTem = execFileName;
-	res.isCompiled=1;
-	return res;
-}
+//	    }
+//	}else if(file_type == 2){
+//        buffer = "g++ -O2 -w -static -fmax-errors=3 -std=c11 "+infilePath+" -lm -o "+execFileName + ">"+iniResult.errFileTem;
+//	    system(buffer.c_str());
+//        if(access(execFileName.c_str(),0) != 0){
+//            res.isCompiled=0;
+//            return res;
+////	        error(EX_ERROR,0,"Compile faild");
+//	    }
+//	}
+//	res.execFileTem = execFileName;
+//	res.isCompiled=1;
+//	return res;
+//}
 /*int get_memory_by_pid(pid_t p)
 {
 //    printf("%d\n",p);
@@ -164,7 +149,7 @@ com_result compile(ini_result &iniResult){
 };
  *
  * */
-run_result run(run_in &runIn, std::string std_ans){
+run_result run(run_in &runIn){
 	int status;
     time_t time_usage = 0;
     int mem_usage = 0;
@@ -178,12 +163,9 @@ run_result run(run_in &runIn, std::string std_ans){
 	    fd_in = open(runIn.stdin_file.c_str(), O_RDONLY);
 	    fd_out = open(runIn.stdout_file.c_str(), O_WRONLY);
 	    fd_err = open(runIn.stderr_file.c_str(), O_WRONLY);
-//        printf("run child process");
-//        printf("%d %d %d\n",fd_in,fd_out,fd_err);
         if(fd_in==-1 || fd_out == -1 || fd_err == -1){
 	        error(EX_ERROR,0,"open file error");
 	    }
-//        printf("run child process");
         dup2(fd_in,STDIN_FILENO);
 	    dup2(fd_out,STDOUT_FILENO);
 	    dup2(fd_err,STDERR_FILENO);
@@ -246,9 +228,9 @@ void print_usage() {
 	    "Options:\n"
 		"  -t, --time=TIME_LIMIT          in ms, positive int only (default is 1000)\n"
 		"  -m, --memory=MEMORY_LIMIT      in KB, positive int only (default is 131072)\n"
-		"  -i, --input=INPUT_FILE         must in the same directory as PROGRAM\n"
+		"  -l, --language=LANGUAGE        0:NONE,1:C,2:CPP\n"
 		"      (file name must be identical with the problem description)\n"
-        "  -a  --ANSPATH=PATH             the ans save path"
+        "  -p  --PID=PID                  PROGRAM ID"
 		"  -h, --help                     print this help\n"
 		"Output:\n"
 		"  1.exited: WEXITSTATUS TIME(ms) MEMORY(KB)\n"
@@ -275,14 +257,11 @@ void parse_opt(int argc, char *  argv[]) {
 			
 			case 'p':
 				if (optarg == 0) error(EX_ERROR, 0, "INPUT_FILE missing.");
-				inFileName = optarg;
+                pid = optarg;
 				break;
 			case 'h':
 				print_usage();
 				break;
-		    case 'l':
-		        file_type = atoi(optarg);
-		        break;
 			default:
 				error(EX_ERROR, 0, 
 				  "Please run 'caretaker --help' for more information.");
@@ -291,5 +270,5 @@ void parse_opt(int argc, char *  argv[]) {
 		opt = getopt_long(argc, argv, optString, longOpts, &longIndex);
 	}
 	if (optind == argc) error(EX_ERROR, 0, "PROGRAM not specified.");
-	else targetFileName = argv[optind];
+	else execDir = argv[optind];
 }

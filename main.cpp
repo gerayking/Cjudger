@@ -43,7 +43,6 @@ int get_file_count(const char *root)
         {
             continue;
         }
-        //printf("%s%s/n",root,ptr->d_name);
         //如果是目录，则递归调用 get_file_count函数
 
         if(ptr->d_type == DT_DIR)
@@ -81,10 +80,10 @@ int run_all(ini_result iniResult){
     └── test1.cpp
      *
      * */
-    std::string workspace = "/home/geray/data";
+    std::string workspace = "/data";
     std::string indir = workspace + "/problem/" + iniResult.pid + "/in";
     std::string outdir = workspace + "/problem/" + iniResult.pid + "/out";
-    std::string execdir = "/home/geray/code/"+iniResult.exec;
+    std::string execdir = iniResult.exec;
     run_in runIn;
     int count = get_file_count(indir.c_str());
     for(int i=1;i<=count;i++){
@@ -97,7 +96,8 @@ int run_all(ini_result iniResult){
         run_result runResult = run(runIn);
         int isAc;
         if(runResult.exitCode!=EX_SUCCESS){
-            clear_env(iniResult.temDir);
+            if(runResult.mem>memoryuse)memoryuse=runResult.mem;
+            if(runResult.time>timeuse)timeuse=runResult.time;
             return runResult.exitCode;
         }else{
             if(runResult.mem>memoryuse)memoryuse=runResult.mem;
@@ -105,12 +105,10 @@ int run_all(ini_result iniResult){
             isAc = file_compare(runIn.stdout_file.c_str(),out.c_str());
             clearFile(runIn.stdout_file.c_str());//清空out文件方便输出
             if(!isAc){
-                clear_env(iniResult.temDir);
                 return EX_WA;
             }
         }
     }
-    clear_env(iniResult.temDir);
     return EX_AC;
 }
 int main(int argc, char * argv[]) {
@@ -119,14 +117,10 @@ int main(int argc, char * argv[]) {
     // 解析参数，./parse -m -t -p : programid
     parse_opt(argc,argv);
     ini_result iniResult = init_env();
-///    com_result comResult = compile(iniResult);
-//    if(comResult.isCompiled==0){
-//        printf("CE\n");
-//        return 0;
-//    }
     int ex_code =  run_all(iniResult);
-    printf("ex_code : %d\n"
-           "timeuse: %d\n"
-           "memoryuse: %d\n",ex_code,timeuse,memoryuse);
+    clear_env(iniResult.temDir);
+    printf("ex_code=%d&"
+           "timeuse=%d&"
+           "memoryuse=%d",ex_code,timeuse,memoryuse);
     return ex_code;
 }

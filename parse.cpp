@@ -41,6 +41,7 @@ void clear_env(std::string temDir){
     std::string buffer;
     buffer = "rm -rf "+temDir;
     if(system(buffer.c_str()) != 0){
+
             error(EX_ERROR,0,"DEL TEMP Failed");
     }
 }
@@ -55,22 +56,28 @@ ini_result init_env(){
 	std::string outFileTem = tmpDirName + "/" + pid + ".out";
 	std::string errFilename = tmpDirName + "/" + pid + ".err";
 	struct passwd *nobody = getpwnam("root");
-//	// 给予当前进程权限，直接给root
-//    uid_t  parent_uid = getuid();
-//	uid_t  parent_gid = getegid();
-//	uid_t child_uid = nobody->pw_uid;
-//	uid_t child_gid = nobody->pw_gid;
-//	chown(tmpDirName.c_str(),child_uid,child_gid);
+	// 给予当前进程权限，直接给root
+    uid_t  parent_uid = getuid();
+	uid_t  parent_gid = getegid();
+	uid_t child_uid = nobody->pw_uid;
+	uid_t child_gid = nobody->pw_gid;
+	chown(tmpDirName.c_str(),child_uid,child_gid);
 	chmod(tmpDirName.c_str(),00711);
 	// infile Auth
 	if(outFileTem.c_str() != NULL){
-		int tmpof = open(outFileTem.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 00777);
-		close(tmpof);
+        int tmcof =open(outFileTem.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 00777);
+        if(tmcof<0){
+            error(EX_ERROR,0,"Create file OUTFILE failed\n");
+        }
+        close(tmcof);
 	}
-	if(errFilename.c_str() !=NULL){
-	    int tmpof = open(errFilename.c_str(),O_WRONLY|O_CREAT|O_TRUNC,00777);
-	    close(tmpof);
-	}
+    if(errFilename.c_str() != NULL){
+        int tmcof = open(errFilename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 00777);
+        if(tmcof<0){
+            error(EX_ERROR,0,"Create file ERRFILE failed\n");
+        }
+        close(tmcof);
+    }
 	ini_result res;
 	res.temDir = tmpDirName;// 临时目录
 	res.pid = pid;// pid
@@ -167,16 +174,16 @@ run_result run(run_in &runIn){
 	        error(EX_ERROR,0,"open file error");
 	    }
         dup2(fd_in,STDIN_FILENO);
-	    dup2(fd_out,STDOUT_FILENO);
-	    dup2(fd_err,STDERR_FILENO);
+        dup2(fd_out,STDOUT_FILENO);
+        dup2(fd_err,STDERR_FILENO);
         if(ptrace(PTRACE_TRACEME,0,NULL,NULL) < 0){
 	        error(EX_ERROR,0,"ptrace error");
 	    }
-        printf("run child process");
         if(execv(runIn.stdexec_file.c_str(), NULL) == -1){
 	        error(EX_ERROR,0,"execv error");
 	    }
-	}else{
+
+    }else{
 	    // parent process
 	    struct rusage usage;
 	    while(1){
@@ -219,7 +226,7 @@ run_result run(run_in &runIn){
             ptrace(PTRACE_SYSCALL,child_pid,NULL,NULL);
 	    }
 	}
-	return return_result("Run Error", EX_SUCCESS, runIn.stdout_file, time_usage, mem_usage);
+	return return_result("Run Error", EX_ERROR, runIn.stdout_file, time_usage, mem_usage);
 }
 void print_usage() {
 	printf("Usage: %s [OPTION] PROGRAM \n", program_invocation_name);
